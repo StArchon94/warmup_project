@@ -11,6 +11,7 @@ def process_range_data(data, k):
     ranges[np.logical_not(is_valid)] = 0
     cs = np.cumsum(ranges)
     n_cv = np.cumsum(is_valid)
+    # mean-filter the ranges to make it more robust
     avg_ranges = np.empty_like(ranges)
     for i in range(360):
         l = i - k // 2
@@ -25,6 +26,7 @@ def process_range_data(data, k):
             n_valid = n_cv[r - 1] - (n_cv[l - 1] if l else 0)
             sum_range = cs[r - 1] - (cs[l - 1] if l else 0)
         avg_ranges[i] = sum_range / n_valid if n_valid else np.nan
+    # get the degree and distance of the closest point
     deg = np.nanargmin(avg_ranges)
     dist = avg_ranges[deg]
     if deg >= 180:

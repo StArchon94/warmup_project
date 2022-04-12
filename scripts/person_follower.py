@@ -3,6 +3,7 @@
 import rospy
 from geometry_msgs.msg import Twist, Vector3
 from sensor_msgs.msg import LaserScan
+
 from utils import process_range_data
 
 
@@ -13,9 +14,10 @@ class PersonFollower:
         # Start rospy node.
         rospy.init_node("person_follower")
 
+        # Get a subscriber to the /scan topic.
         rospy.Subscriber('/scan', LaserScan, self.scan_callback)
 
-        # Get a publisher to the cmd_vel topic.
+        # Get a publisher to the /cmd_vel topic.
         self.pub_twist = rospy.Publisher("/cmd_vel", Twist, queue_size=1)
 
         # window size for mean-filtering the ranges data
@@ -27,7 +29,7 @@ class PersonFollower:
         # twist for stopping
         self.stop_twist = Twist(linear=Vector3(), angular=Vector3())
 
-        # target distance to maintain
+        # desired distance to the person
         self.tgt_dist = 0.5
 
         # angular threshold to enable forward movement
@@ -42,11 +44,14 @@ class PersonFollower:
 
     def scan_callback(self, data):
         retval = process_range_data(data, self.k)
+        # stop if nothing in range
         if retval is None:
             self.pub_twist.publish(self.stop_twist)
             return
         deg, dist = retval
+        # apply linear gain only if angular error is small enough
         self.twist.linear.x = (self.tgt_dist - dist) * self.k_dist if abs(deg) < self.ang_th else 0
+        # apply angular gain
         self.twist.angular.z = deg * self.k_deg
         self.pub_twist.publish(self.twist)
 

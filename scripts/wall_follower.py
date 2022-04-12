@@ -14,20 +14,29 @@ class WallFollower:
         # Start rospy node.
         rospy.init_node("wall_follower")
 
+        # Get a subscriber to the /scan topic.
         rospy.Subscriber('/scan', LaserScan, self.scan_callback)
 
-        # Get a publisher to the cmd_vel topic.
+        # Get a publisher to the /cmd_vel topic.
         self.pub_twist = rospy.Publisher("/cmd_vel", Twist, queue_size=1)
 
         # window size for mean-filtering the ranges data
         self.k = 7
 
         # twist for moving
-        self.twist = Twist(linear=Vector3(0.1, 0, 0), angular=Vector3())
+        self.twist = Twist(linear=Vector3(), angular=Vector3())
 
-        # target distance to maintain
+        # linear velocity
+        self.lin = 0.1
+
+        # desired degree of the closest point
         self.tgt_deg = -90
+
+        # desired distance to the wall
         self.tgt_dist = 0.4
+
+        # angular threshold to enable forward movement
+        self.ang_th = 45
 
         # gains
         self.k_deg = -0.03
@@ -38,17 +47,20 @@ class WallFollower:
 
     def scan_callback(self, data):
         retval = process_range_data(data, self.k)
+        # move forward if nothing in range
         if retval is None:
-            self.twist.linear.x = 0.1
+            self.twist.linear.x = self.lin
             self.twist.angular.z = 0
             self.pub_twist.publish(self.twist)
             return
         deg, dist = retval
-        deg_diff = self.tgt_deg - deg
-        if deg_diff < -180:
-            deg_diff += 360
-        self.twist.linear.x = 0.1 if abs(deg_diff) < 45 else 0
-        self.twist.angular.z = deg_diff * self.k_deg + (self.tgt_dist - dist) * self.k_dist
+        deg_err = self.tgt_deg - deg
+        if deg_err < -180:
+            deg_err += 360
+        # move forward only if angular error is small enough
+        self.twist.linear.x = self.lin if abs(deg_err) < self.ang_th else 0
+        # apply angular gains
+        self.twist.angular.z = deg_err * self.k_deg + (self.tgt_dist - dist) * self.k_dist
         self.pub_twist.publish(self.twist)
 
 
