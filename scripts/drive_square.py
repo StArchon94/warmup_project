@@ -29,12 +29,12 @@ class DriveSquare:
 
     def run(self):
         # allow the publisher enough time to set up before publishing the first msg
-        rospy.sleep(3)
+        rospy.sleep(1)
 
         while not rospy.is_shutdown():
-            # moving forward for 4 secs
+            # moving forward for 3 secs
             self.pub_twist.publish(self.fwd_twist)
-            rospy.sleep(4)
+            rospy.sleep(3)
 
             # stop moving for 1 sec to stablize
             self.pub_twist.publish(self.stop_twist)
